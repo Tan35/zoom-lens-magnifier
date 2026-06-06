@@ -3,322 +3,163 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Zoom Lens - Interactive Image Magnifier</title>
+    <title>Zoom Lens — Interactive Image Magnifier</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
       :root {
         --lens-size: 200px;
         --zoom: 1.55;
-        --bg: #fafafa;
-        --card-bg: #ffffff;
-        --text: #1a1a2e;
-        --text-secondary: #6b7280;
-        --accent: #6366f1;
-        --accent-light: #a5b4fc;
-        --border: rgba(0, 0, 0, 0.08);
-        --radius: 16px;
       }
+      body { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif; }
 
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-
-      body {
-        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-          "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-        background: var(--bg);
-        color: var(--text);
-        min-height: 100vh;
-      }
-
-      .container {
-        max-width: 860px;
-        margin: 0 auto;
-        padding: 48px 24px 64px;
-      }
-
-      /* Header */
-      .header {
-        text-align: center;
-        margin-bottom: 36px;
-      }
-      .header h1 {
-        font-size: 28px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        margin-bottom: 8px;
-      }
-      .header p {
-        font-size: 15px;
-        color: var(--text-secondary);
-        line-height: 1.6;
-        max-width: 540px;
-        margin: 0 auto;
-      }
-      .header code {
-        background: #f1f5f9;
-        padding: 0.15em 0.4em;
-        border-radius: 5px;
-        font-size: 13px;
-        color: var(--accent);
-      }
-
-      /* Upload area */
-      .upload-section {
-        margin-bottom: 28px;
-      }
-      .upload-zone {
-        border: 2px dashed var(--border);
-        border-radius: var(--radius);
-        padding: 32px;
-        text-align: center;
-        cursor: pointer;
-        transition: border-color 0.2s, background 0.2s;
-        background: var(--card-bg);
-        position: relative;
-      }
-      .upload-zone:hover,
-      .upload-zone.drag-over {
-        border-color: var(--accent-light);
-        background: #f8f7ff;
-      }
-      .upload-zone input[type="file"] {
-        position: absolute;
-        inset: 0;
-        opacity: 0;
-        cursor: pointer;
-      }
-      .upload-icon {
-        width: 48px;
-        height: 48px;
-        margin: 0 auto 12px;
-        color: var(--accent-light);
-      }
-      .upload-zone h3 {
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 4px;
-      }
-      .upload-zone p {
-        font-size: 13px;
-        color: var(--text-secondary);
-      }
-      .upload-zone .btn-browse {
-        display: inline-block;
-        margin-top: 14px;
-        padding: 8px 24px;
-        background: var(--accent);
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: background 0.2s;
-        pointer-events: none;
-      }
-      .upload-zone:hover .btn-browse {
-        background: #4f46e5;
-      }
-
-      /* Controls bar */
-      .controls {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-      }
-      .controls label {
-        font-size: 13px;
-        color: var(--text-secondary);
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-      .controls input[type="range"] {
-        width: 120px;
-        accent-color: var(--accent);
-      }
-      .controls .value-display {
-        font-weight: 600;
-        color: var(--text);
-        min-width: 32px;
-        text-align: center;
-      }
-      .btn-reset {
-        margin-left: auto;
-        padding: 6px 16px;
-        font-size: 13px;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        background: var(--card-bg);
-        color: var(--text-secondary);
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      .btn-reset:hover {
-        border-color: var(--accent-light);
-        color: var(--accent);
-      }
-
-      /* Card */
-      .card {
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        overflow: hidden;
-        background: var(--card-bg);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-      }
-
-      /* Zoom container */
-      .zoom {
-        position: relative;
-        width: 100%;
-        aspect-ratio: 1 / 1;
-        overflow: hidden;
-        background: #f0f0f0;
-      }
+      /* Zoom mechanics — can't be replaced by Tailwind */
+      .zoom { position: relative; overflow: hidden; background: #f5f5f5; }
       .zoom img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-        user-select: none;
-        -webkit-user-drag: none;
-        pointer-events: none;
+        width: 100%; height: 100%; object-fit: cover; display: block;
+        user-select: none; -webkit-user-drag: none; pointer-events: none;
       }
       .zoom.is-hover { cursor: none; }
 
-      /* Zoom layer */
       .zoom .layer {
-        position: absolute;
-        inset: 0;
-        overflow: hidden;
-        z-index: 10;
-        opacity: 0;
-        transform: scale(0.58);
+        position: absolute; inset: 0; overflow: hidden; z-index: 10;
+        opacity: 0; transform: scale(0.58);
         transform-origin: var(--x) var(--y);
         transition: opacity 300ms ease-out, transform 300ms ease-out;
         will-change: opacity, transform;
       }
-      .zoom.is-hover .layer {
-        opacity: 1;
-        transform: scale(1);
-      }
-      .zoom.is-leaving .layer {
-        opacity: 0;
-        transform: scale(0.8);
-      }
+      .zoom.is-hover .layer { opacity: 1; transform: scale(1); }
+      .zoom.is-leaving .layer { opacity: 0; transform: scale(0.8); }
 
-      /* Zoomed content */
       .zoom .zoomed {
-        position: absolute;
-        inset: 0;
+        position: absolute; inset: 0;
         transform: scale(var(--zoom));
         transform-origin: var(--x) var(--y);
       }
 
-      /* Lens frame */
       .zoom .lens {
         position: absolute;
-        width: var(--lens-size);
-        height: var(--lens-size);
-        border-radius: 999px;
-        pointer-events: none;
-        z-index: 20;
+        width: var(--lens-size); height: var(--lens-size);
+        border-radius: 999px; pointer-events: none; z-index: 20;
         border: 1.5px solid rgba(255,255,255,0.55);
-        box-shadow:
-          0 0 0 1px rgba(0,0,0,0.12),
-          inset 0 0 0 1px rgba(0,0,0,0.06);
-        opacity: 0;
-        transform: scale(0.58);
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.10), inset 0 0 0 1px rgba(0,0,0,0.05);
+        opacity: 0; transform: scale(0.58);
         transition: opacity 300ms ease-out, transform 300ms ease-out;
         will-change: opacity, transform;
       }
-      .zoom.is-hover .lens {
-        opacity: 1;
-        transform: scale(1);
-      }
-      .zoom.is-leaving .lens {
-        opacity: 0;
-        transform: scale(0.8);
-      }
+      .zoom.is-hover .lens { opacity: 1; transform: scale(1); }
+      .zoom.is-leaving .lens { opacity: 0; transform: scale(0.8); }
 
-      /* Footer */
-      .footer {
-        text-align: center;
-        margin-top: 24px;
-        font-size: 12px;
-        color: var(--text-secondary);
+      /* Custom range slider */
+      input[type="range"] {
+        -webkit-appearance: none; appearance: none;
+        height: 4px; border-radius: 2px; background: #e5e7eb; outline: none;
       }
-      .footer a {
-        color: var(--accent);
-        text-decoration: none;
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none; appearance: none;
+        width: 14px; height: 14px; border-radius: 50%;
+        background: #000; cursor: pointer;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+        transition: transform 150ms ease;
       }
-      .footer a:hover { text-decoration: underline; }
-
-      .hint {
-        margin-top: 10px;
-        font-size: 12px;
-        color: var(--text-secondary);
-        text-align: center;
+      input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.15);
       }
-
-      /* Responsive */
-      @media (max-width: 600px) {
-        .container { padding: 24px 16px 48px; }
-        .header h1 { font-size: 22px; }
-        .controls { gap: 10px; }
-        .controls input[type="range"] { width: 90px; }
+      input[type="range"]::-moz-range-thumb {
+        width: 14px; height: 14px; border-radius: 50%;
+        background: #000; cursor: pointer;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
       }
     </style>
   </head>
-  <body>
-    <div class="container">
-      <!-- Header -->
-      <div class="header">
-        <h1>Zoom Lens Magnifier</h1>
-        <p>
-          上传任意图片，体验圆形放大镜效果。原理：同一张图渲染两层，上层
-          <code>scale()</code> 放大，再用 <code>mask-image: radial-gradient()</code> 挖出圆形窗口。
+  <body class="bg-white text-black antialiased min-h-screen">
+
+    <!-- Nav -->
+    <nav class="sticky top-0 z-50 border-b border-[#eaeaea] bg-white/80 backdrop-blur-md">
+      <div class="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="scan-search" class="w-5 h-5 text-black" style="stroke-width:1.5"></i>
+          <span class="text-sm font-semibold tracking-tight">Zoom Lens</span>
+        </div>
+        <a href="https://github.com/Tan35/zoom-lens-magnifier" target="_blank" rel="noopener"
+           class="flex items-center gap-1.5 text-xs text-[#666] hover:text-black transition-colors duration-150">
+          <i data-lucide="github" class="w-4 h-4" style="stroke-width:1.5"></i>
+          <span>GitHub</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- Main -->
+    <main class="max-w-3xl mx-auto px-6 py-12 sm:py-16">
+
+      <!-- Hero -->
+      <div class="text-center mb-12">
+        <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight mb-4">
+          圆形放大镜
+        </h1>
+        <p class="text-sm sm:text-[15px] text-[#666] leading-relaxed max-w-lg mx-auto">
+          上传任意图片，体验圆形放大镜效果。同一张图渲染两层，上层
+          <code class="bg-[#f5f5f5] text-[#333] px-1.5 py-0.5 rounded text-[13px] font-mono">scale()</code>
+          放大，再用
+          <code class="bg-[#f5f5f5] text-[#333] px-1.5 py-0.5 rounded text-[13px] font-mono">mask-image</code>
+          挖出圆形窗口。
         </p>
       </div>
 
-      <!-- Upload -->
-      <div class="upload-section">
-        <div class="upload-zone" id="uploadZone">
-          <input type="file" id="fileInput" accept="image/*" />
-          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          <h3>拖放图片到此处</h3>
-          <p>支持 JPG、PNG、WebP、SVG 等常见图片格式</p>
-          <span class="btn-browse">选择图片</span>
+      <!-- Upload Zone -->
+      <div class="mb-8">
+        <div id="uploadZone"
+             class="relative border border-dashed border-[#d4d4d4] rounded-xl p-8 sm:p-10 text-center
+                    cursor-pointer transition-all duration-200
+                    hover:border-[#999] hover:bg-[#fafafa]
+                    group">
+          <input type="file" id="fileInput" accept="image/*"
+                 class="absolute inset-0 opacity-0 cursor-pointer z-10" />
+          <div class="flex flex-col items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-[#f5f5f5] flex items-center justify-center
+                        group-hover:bg-[#eee] transition-colors duration-200">
+              <i data-lucide="upload-cloud" class="w-5 h-5 text-[#999]" style="stroke-width:1.5"></i>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-[#333]">点击上传或拖放图片</p>
+              <p class="text-xs text-[#999] mt-1">JPG, PNG, WebP, SVG</p>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- Controls -->
-      <div class="controls">
-        <label>
-          放大倍数
-          <input type="range" id="zoomRange" min="1.1" max="3" step="0.05" value="1.55" />
-          <span class="value-display" id="zoomValue">1.55x</span>
-        </label>
-        <label>
-          镜片大小
-          <input type="range" id="lensRange" min="100" max="350" step="10" value="200" />
-          <span class="value-display" id="lensValue">200px</span>
-        </label>
-        <button class="btn-reset" id="btnReset">恢复示例图片</button>
+      <div class="flex items-center gap-6 sm:gap-8 mb-5 flex-wrap">
+        <div class="flex items-center gap-3">
+          <label class="text-xs text-[#666] whitespace-nowrap select-none">放大倍数</label>
+          <input type="range" id="zoomRange" min="1.1" max="3" step="0.05" value="1.55" class="w-24 sm:w-28" />
+          <span id="zoomValue" class="text-xs font-medium text-black tabular-nums min-w-[36px]">1.55x</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="text-xs text-[#666] whitespace-nowrap select-none">镜片大小</label>
+          <input type="range" id="lensRange" min="100" max="350" step="10" value="200" class="w-24 sm:w-28" />
+          <span id="lensValue" class="text-xs font-medium text-black tabular-nums min-w-[36px]">200px</span>
+        </div>
+        <button id="btnReset"
+                class="ml-auto text-xs text-[#666] hover:text-black border border-[#eaeaea] hover:border-[#ccc]
+                       rounded-lg px-3.5 py-1.5 transition-all duration-150
+                       flex items-center gap-1.5">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5" style="stroke-width:1.5"></i>
+          恢复示例
+        </button>
       </div>
 
-      <!-- Zoom Card -->
-      <div class="card">
-        <div class="zoom" id="zoom">
+      <!-- Zoom Canvas -->
+      <div class="border border-[#eaeaea] rounded-xl overflow-hidden bg-[#f5f5f5]">
+        <div class="zoom aspect-square" id="zoom">
           <img id="baseImg"
-            src="https://www.kumailnanji.com/images/letters/letter-correction.png"
-            alt="Zoom lens demo"
-            draggable="false" />
+               src="https://www.kumailnanji.com/images/letters/letter-correction.png"
+               alt="Zoom lens demo" draggable="false" />
           <div class="layer" id="layer">
             <div class="zoomed" id="zoomed">
               <img id="zoomImg" src="" alt="" draggable="false" />
@@ -328,21 +169,34 @@
         </div>
       </div>
 
-      <div class="hint">Hover to zoom — 在图片上移动鼠标试试</div>
-
-      <div class="footer">
-        Built with pure HTML / CSS / JS &middot;
-        <a href="https://github.com/Tan35/zoom-lens-magnifier" target="_blank" rel="noopener">View on GitHub</a>
+      <!-- Hint -->
+      <div class="flex items-center justify-center gap-1.5 mt-4">
+        <i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-[#bbb]" style="stroke-width:1.5"></i>
+        <p class="text-xs text-[#999]">在图片上移动鼠标，体验放大镜效果</p>
       </div>
-    </div>
+
+      <!-- Footer Divider -->
+      <div class="border-t border-[#eaeaea] mt-16 pt-6 flex items-center justify-between">
+        <p class="text-xs text-[#999]">Pure HTML / CSS / JS — Zero dependencies</p>
+        <a href="https://github.com/Tan35/zoom-lens-magnifier" target="_blank" rel="noopener"
+           class="text-xs text-[#999] hover:text-black transition-colors duration-150 flex items-center gap-1.5">
+          <i data-lucide="star" class="w-3.5 h-3.5" style="stroke-width:1.5"></i>
+          Star on GitHub
+        </a>
+      </div>
+
+    </main>
 
     <script>
-      // ── Elements ────────────────────────────────────────────────
-      const el       = document.getElementById("zoom");
-      const layer    = document.getElementById("layer");
-      const lens     = document.getElementById("lens");
-      const baseImg  = document.getElementById("baseImg");
-      const zoomImg  = document.getElementById("zoomImg");
+      // Init Lucide icons
+      lucide.createIcons();
+
+      // ── Elements ──
+      const el        = document.getElementById("zoom");
+      const layer     = document.getElementById("layer");
+      const lens      = document.getElementById("lens");
+      const baseImg   = document.getElementById("baseImg");
+      const zoomImg   = document.getElementById("zoomImg");
       const fileInput = document.getElementById("fileInput");
       const uploadZone = document.getElementById("uploadZone");
       const zoomRange  = document.getElementById("zoomRange");
@@ -353,7 +207,7 @@
 
       const DEMO_SRC = "https://www.kumailnanji.com/images/letters/letter-correction.png";
 
-      // ── Sync src to zoom layer ──────────────────────────────────
+      // ── Sync src ──
       function syncZoomSrc() {
         const src = baseImg.currentSrc || baseImg.src;
         if (zoomImg.src !== src) zoomImg.src = src;
@@ -362,35 +216,32 @@
       baseImg.addEventListener("error", syncZoomSrc);
       syncZoomSrc();
 
-      // ── Read CSS vars ───────────────────────────────────────────
+      // ── Lens size reader ──
       function getLensSize() {
         return parseFloat(
           getComputedStyle(document.documentElement).getPropertyValue("--lens-size")
         );
       }
 
-      // ── Position logic ──────────────────────────────────────────
+      // ── Position ──
       function setPos(clientX, clientY) {
         const r = el.getBoundingClientRect();
         const x = clientX - r.left;
         const y = clientY - r.top;
         const half = getLensSize() / 2;
 
-        // mask: circular reveal
         const mask = `radial-gradient(circle ${half}px at ${x}px ${y}px, black 100%, transparent 100%)`;
         layer.style.webkitMaskImage = mask;
         layer.style.maskImage = mask;
 
-        // transform-origin
         el.style.setProperty("--x", `${x}px`);
         el.style.setProperty("--y", `${y}px`);
 
-        // lens position
         lens.style.left = `${x - half}px`;
         lens.style.top  = `${y - half}px`;
       }
 
-      // ── Hover states ────────────────────────────────────────────
+      // ── Hover states ──
       let leaveTimer = null;
 
       el.addEventListener("mouseenter", () => {
@@ -408,7 +259,7 @@
       });
       el.addEventListener("mousemove", (e) => setPos(e.clientX, e.clientY));
 
-      // ── Touch support ───────────────────────────────────────────
+      // ── Touch ──
       el.addEventListener("touchstart", (e) => {
         el.classList.add("is-hover");
         el.classList.remove("is-leaving");
@@ -425,13 +276,13 @@
         setTimeout(() => el.classList.remove("is-leaving"), 300);
       });
 
-      // ── Init position ───────────────────────────────────────────
+      // ── Init position ──
       requestAnimationFrame(() => {
         const r0 = el.getBoundingClientRect();
         setPos(r0.left + r0.width * 0.25, r0.top + r0.height * 0.25);
       });
 
-      // ── File upload ─────────────────────────────────────────────
+      // ── File upload ──
       function loadImage(src) {
         baseImg.src = src;
         syncZoomSrc();
@@ -445,17 +296,16 @@
         reader.readAsDataURL(file);
       });
 
-      // Drag & drop
       uploadZone.addEventListener("dragover", (e) => {
         e.preventDefault();
-        uploadZone.classList.add("drag-over");
+        uploadZone.classList.add("border-[#999]", "bg-[#fafafa]");
       });
       uploadZone.addEventListener("dragleave", () => {
-        uploadZone.classList.remove("drag-over");
+        uploadZone.classList.remove("border-[#999]", "bg-[#fafafa]");
       });
       uploadZone.addEventListener("drop", (e) => {
         e.preventDefault();
-        uploadZone.classList.remove("drag-over");
+        uploadZone.classList.remove("border-[#999]", "bg-[#fafafa]");
         const file = e.dataTransfer.files?.[0];
         if (!file || !file.type.startsWith("image/")) return;
         const reader = new FileReader();
@@ -463,7 +313,7 @@
         reader.readAsDataURL(file);
       });
 
-      // ── Controls ────────────────────────────────────────────────
+      // ── Controls ──
       zoomRange.addEventListener("input", () => {
         const v = parseFloat(zoomRange.value);
         document.documentElement.style.setProperty("--zoom", v);
