@@ -17,7 +17,7 @@ The same image is rendered in two layers. The upper layer is scaled up with CSS 
 
 ## Live Demo
 
-Deployed on Vercel — link will be available after deployment.
+[Live Demo on Vercel](https://zoom-lens-beryl.vercel.app)
 
 ## License
 
