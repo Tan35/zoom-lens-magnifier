@@ -8,6 +8,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { darkMode: 'class' };
+    </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
       :root {
@@ -16,8 +19,8 @@
       }
       body { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif; }
 
-      /* Zoom mechanics — can't be replaced by Tailwind */
-      .zoom { position: relative; overflow: hidden; background: #f5f5f5; }
+      /* ── Zoom mechanics ── */
+      .zoom { position: relative; overflow: hidden; }
       .zoom img {
         width: 100%; height: 100%; object-fit: cover; display: block;
         user-select: none; -webkit-user-drag: none; pointer-events: none;
@@ -53,11 +56,20 @@
       .zoom.is-hover .lens { opacity: 1; transform: scale(1); }
       .zoom.is-leaving .lens { opacity: 0; transform: scale(0.8); }
 
-      /* Custom range slider */
+      /* Dark mode lens — invert border to stay visible on dark content */
+      .dark .zoom .lens {
+        border-color: rgba(0,0,0,0.45);
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.12), inset 0 0 0 1px rgba(255,255,255,0.06);
+      }
+
+      /* ── Custom range slider ── */
       input[type="range"] {
         -webkit-appearance: none; appearance: none;
         height: 4px; border-radius: 2px; background: #e5e7eb; outline: none;
+        transition: background 200ms;
       }
+      .dark input[type="range"] { background: #333; }
+
       input[type="range"]::-webkit-slider-thumb {
         -webkit-appearance: none; appearance: none;
         width: 14px; height: 14px; border-radius: 50%;
@@ -66,8 +78,12 @@
         box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
         transition: transform 150ms ease;
       }
-      input[type="range"]::-webkit-slider-thumb:hover {
-        transform: scale(1.15);
+      input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+      .dark input[type="range"]::-webkit-slider-thumb {
+        background: #fff;
+        border-color: #000;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.15);
       }
       input[type="range"]::-moz-range-thumb {
         width: 14px; height: 14px; border-radius: 50%;
@@ -75,22 +91,46 @@
         border: 2px solid #fff;
         box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
       }
+      .dark input[type="range"]::-moz-range-thumb {
+        background: #fff;
+        border-color: #000;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.15);
+      }
+
+      /* Smooth theme transition */
+      body, nav, .border-transition {
+        transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+      }
     </style>
   </head>
-  <body class="bg-white text-black antialiased min-h-screen">
+  <body class="bg-white text-black antialiased min-h-screen dark:bg-black dark:text-white">
 
     <!-- Nav -->
-    <nav class="sticky top-0 z-50 border-b border-[#eaeaea] bg-white/80 backdrop-blur-md">
+    <nav class="sticky top-0 z-50 border-b border-[#eaeaea] bg-white/80 backdrop-blur-md
+                dark:border-[#222] dark:bg-black/80">
       <div class="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <i data-lucide="scan-search" class="w-5 h-5 text-black" style="stroke-width:1.5"></i>
+          <i data-lucide="scan-search" class="w-5 h-5 text-black dark:text-white" style="stroke-width:1.5"></i>
           <span class="text-sm font-semibold tracking-tight">Zoom Lens</span>
         </div>
-        <a href="https://github.com/Tan35/zoom-lens-magnifier" target="_blank" rel="noopener"
-           class="flex items-center gap-1.5 text-xs text-[#666] hover:text-black transition-colors duration-150">
-          <i data-lucide="github" class="w-4 h-4" style="stroke-width:1.5"></i>
-          <span>GitHub</span>
-        </a>
+        <div class="flex items-center gap-1">
+          <!-- Theme toggle -->
+          <button id="themeToggle" aria-label="Toggle theme"
+                  class="w-8 h-8 rounded-lg flex items-center justify-center
+                         text-[#666] hover:text-black hover:bg-[#f5f5f5]
+                         dark:text-[#888] dark:hover:text-white dark:hover:bg-[#1a1a1a]
+                         transition-all duration-150">
+            <i data-lucide="sun" class="w-4 h-4 hidden dark:block" style="stroke-width:1.5"></i>
+            <i data-lucide="moon" class="w-4 h-4 block dark:hidden" style="stroke-width:1.5"></i>
+          </button>
+          <a href="https://github.com/Tan35/zoom-lens-magnifier" target="_blank" rel="noopener"
+             class="w-8 h-8 rounded-lg flex items-center justify-center
+                    text-[#666] hover:text-black hover:bg-[#f5f5f5]
+                    dark:text-[#888] dark:hover:text-white dark:hover:bg-[#1a1a1a]
+                    transition-all duration-150">
+            <i data-lucide="github" class="w-4 h-4" style="stroke-width:1.5"></i>
+          </a>
+        </div>
       </div>
     </nav>
 
@@ -102,11 +142,14 @@
         <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight mb-4">
           圆形放大镜
         </h1>
-        <p class="text-sm sm:text-[15px] text-[#666] leading-relaxed max-w-lg mx-auto">
+        <p class="text-sm sm:text-[15px] text-[#666] leading-relaxed max-w-lg mx-auto
+                  dark:text-[#888]">
           上传任意图片，体验圆形放大镜效果。同一张图渲染两层，上层
-          <code class="bg-[#f5f5f5] text-[#333] px-1.5 py-0.5 rounded text-[13px] font-mono">scale()</code>
+          <code class="bg-[#f5f5f5] text-[#333] px-1.5 py-0.5 rounded text-[13px] font-mono
+                       dark:bg-[#1a1a1a] dark:text-[#ccc]">scale()</code>
           放大，再用
-          <code class="bg-[#f5f5f5] text-[#333] px-1.5 py-0.5 rounded text-[13px] font-mono">mask-image</code>
+          <code class="bg-[#f5f5f5] text-[#333] px-1.5 py-0.5 rounded text-[13px] font-mono
+                       dark:bg-[#1a1a1a] dark:text-[#ccc]">mask-image</code>
           挖出圆形窗口。
         </p>
       </div>
@@ -117,17 +160,20 @@
              class="relative border border-dashed border-[#d4d4d4] rounded-xl p-8 sm:p-10 text-center
                     cursor-pointer transition-all duration-200
                     hover:border-[#999] hover:bg-[#fafafa]
+                    dark:border-[#333] dark:hover:border-[#555] dark:hover:bg-[#0a0a0a]
                     group">
           <input type="file" id="fileInput" accept="image/*"
                  class="absolute inset-0 opacity-0 cursor-pointer z-10" />
           <div class="flex flex-col items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-[#f5f5f5] flex items-center justify-center
-                        group-hover:bg-[#eee] transition-colors duration-200">
-              <i data-lucide="upload-cloud" class="w-5 h-5 text-[#999]" style="stroke-width:1.5"></i>
+                        group-hover:bg-[#eee]
+                        dark:bg-[#1a1a1a] dark:group-hover:bg-[#222]
+                        transition-colors duration-200">
+              <i data-lucide="upload-cloud" class="w-5 h-5 text-[#999] dark:text-[#666]" style="stroke-width:1.5"></i>
             </div>
             <div>
-              <p class="text-sm font-medium text-[#333]">点击上传或拖放图片</p>
-              <p class="text-xs text-[#999] mt-1">JPG, PNG, WebP, SVG</p>
+              <p class="text-sm font-medium text-[#333] dark:text-[#ccc]">点击上传或拖放图片</p>
+              <p class="text-xs text-[#999] mt-1 dark:text-[#555]">JPG, PNG, WebP, SVG</p>
             </div>
           </div>
         </div>
@@ -136,17 +182,18 @@
       <!-- Controls -->
       <div class="flex items-center gap-6 sm:gap-8 mb-5 flex-wrap">
         <div class="flex items-center gap-3">
-          <label class="text-xs text-[#666] whitespace-nowrap select-none">放大倍数</label>
+          <label class="text-xs text-[#666] dark:text-[#888] whitespace-nowrap select-none">放大倍数</label>
           <input type="range" id="zoomRange" min="1.1" max="3" step="0.05" value="1.55" class="w-24 sm:w-28" />
-          <span id="zoomValue" class="text-xs font-medium text-black tabular-nums min-w-[36px]">1.55x</span>
+          <span id="zoomValue" class="text-xs font-medium text-black dark:text-white tabular-nums min-w-[36px]">1.55x</span>
         </div>
         <div class="flex items-center gap-3">
-          <label class="text-xs text-[#666] whitespace-nowrap select-none">镜片大小</label>
+          <label class="text-xs text-[#666] dark:text-[#888] whitespace-nowrap select-none">镜片大小</label>
           <input type="range" id="lensRange" min="100" max="350" step="10" value="200" class="w-24 sm:w-28" />
-          <span id="lensValue" class="text-xs font-medium text-black tabular-nums min-w-[36px]">200px</span>
+          <span id="lensValue" class="text-xs font-medium text-black dark:text-white tabular-nums min-w-[36px]">200px</span>
         </div>
         <button id="btnReset"
                 class="ml-auto text-xs text-[#666] hover:text-black border border-[#eaeaea] hover:border-[#ccc]
+                       dark:text-[#888] dark:hover:text-white dark:border-[#222] dark:hover:border-[#444]
                        rounded-lg px-3.5 py-1.5 transition-all duration-150
                        flex items-center gap-1.5">
           <i data-lucide="rotate-ccw" class="w-3.5 h-3.5" style="stroke-width:1.5"></i>
@@ -155,7 +202,8 @@
       </div>
 
       <!-- Zoom Canvas -->
-      <div class="border border-[#eaeaea] rounded-xl overflow-hidden bg-[#f5f5f5]">
+      <div class="border border-[#eaeaea] rounded-xl overflow-hidden bg-[#f5f5f5]
+                  dark:border-[#222] dark:bg-[#111]">
         <div class="zoom aspect-square" id="zoom">
           <img id="baseImg"
                src="https://www.kumailnanji.com/images/letters/letter-correction.png"
@@ -171,15 +219,18 @@
 
       <!-- Hint -->
       <div class="flex items-center justify-center gap-1.5 mt-4">
-        <i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-[#bbb]" style="stroke-width:1.5"></i>
-        <p class="text-xs text-[#999]">在图片上移动鼠标，体验放大镜效果</p>
+        <i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-[#bbb] dark:text-[#444]" style="stroke-width:1.5"></i>
+        <p class="text-xs text-[#999] dark:text-[#555]">在图片上移动鼠标，体验放大镜效果</p>
       </div>
 
-      <!-- Footer Divider -->
-      <div class="border-t border-[#eaeaea] mt-16 pt-6 flex items-center justify-between">
-        <p class="text-xs text-[#999]">Pure HTML / CSS / JS — Zero dependencies</p>
+      <!-- Footer -->
+      <div class="border-t border-[#eaeaea] mt-16 pt-6 flex items-center justify-between
+                  dark:border-[#222]">
+        <p class="text-xs text-[#999] dark:text-[#555]">Pure HTML / CSS / JS — Zero dependencies</p>
         <a href="https://github.com/Tan35/zoom-lens-magnifier" target="_blank" rel="noopener"
-           class="text-xs text-[#999] hover:text-black transition-colors duration-150 flex items-center gap-1.5">
+           class="text-xs text-[#999] hover:text-black transition-colors duration-150
+                  dark:text-[#555] dark:hover:text-white
+                  flex items-center gap-1.5">
           <i data-lucide="star" class="w-3.5 h-3.5" style="stroke-width:1.5"></i>
           Star on GitHub
         </a>
@@ -188,6 +239,20 @@
     </main>
 
     <script>
+      // ── Theme toggle ──
+      const html = document.documentElement;
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        html.classList.add('dark');
+      }
+
+      document.getElementById('themeToggle').addEventListener('click', () => {
+        html.classList.toggle('dark');
+        localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+        // Re-render icons after DOM change
+        lucide.createIcons();
+      });
+
       // Init Lucide icons
       lucide.createIcons();
 
@@ -216,14 +281,12 @@
       baseImg.addEventListener("error", syncZoomSrc);
       syncZoomSrc();
 
-      // ── Lens size reader ──
       function getLensSize() {
         return parseFloat(
           getComputedStyle(document.documentElement).getPropertyValue("--lens-size")
         );
       }
 
-      // ── Position ──
       function setPos(clientX, clientY) {
         const r = el.getBoundingClientRect();
         const x = clientX - r.left;
@@ -241,7 +304,6 @@
         lens.style.top  = `${y - half}px`;
       }
 
-      // ── Hover states ──
       let leaveTimer = null;
 
       el.addEventListener("mouseenter", () => {
@@ -259,7 +321,6 @@
       });
       el.addEventListener("mousemove", (e) => setPos(e.clientX, e.clientY));
 
-      // ── Touch ──
       el.addEventListener("touchstart", (e) => {
         el.classList.add("is-hover");
         el.classList.remove("is-leaving");
@@ -276,13 +337,11 @@
         setTimeout(() => el.classList.remove("is-leaving"), 300);
       });
 
-      // ── Init position ──
       requestAnimationFrame(() => {
         const r0 = el.getBoundingClientRect();
         setPos(r0.left + r0.width * 0.25, r0.top + r0.height * 0.25);
       });
 
-      // ── File upload ──
       function loadImage(src) {
         baseImg.src = src;
         syncZoomSrc();
@@ -298,14 +357,14 @@
 
       uploadZone.addEventListener("dragover", (e) => {
         e.preventDefault();
-        uploadZone.classList.add("border-[#999]", "bg-[#fafafa]");
+        uploadZone.classList.add("border-[#999]", "bg-[#fafafa]", "dark:border-[#555]", "dark:bg-[#0a0a0a]");
       });
       uploadZone.addEventListener("dragleave", () => {
-        uploadZone.classList.remove("border-[#999]", "bg-[#fafafa]");
+        uploadZone.classList.remove("border-[#999]", "bg-[#fafafa]", "dark:border-[#555]", "dark:bg-[#0a0a0a]");
       });
       uploadZone.addEventListener("drop", (e) => {
         e.preventDefault();
-        uploadZone.classList.remove("border-[#999]", "bg-[#fafafa]");
+        uploadZone.classList.remove("border-[#999]", "bg-[#fafafa]", "dark:border-[#555]", "dark:bg-[#0a0a0a]");
         const file = e.dataTransfer.files?.[0];
         if (!file || !file.type.startsWith("image/")) return;
         const reader = new FileReader();
@@ -313,7 +372,6 @@
         reader.readAsDataURL(file);
       });
 
-      // ── Controls ──
       zoomRange.addEventListener("input", () => {
         const v = parseFloat(zoomRange.value);
         document.documentElement.style.setProperty("--zoom", v);
