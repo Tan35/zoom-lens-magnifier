@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zoom Lens - Interactive Image Magnifier</title>
+    <style>
+      :root {
+        --lens-size: 200px;
+        --zoom: 1.55;
+        --bg: #fafafa;
+        --card-bg: #ffffff;
+        --text: #1a1a2e;
+        --text-secondary: #6b7280;
+        --accent: #6366f1;
+        --accent-light: #a5b4fc;
+        --border: rgba(0, 0, 0, 0.08);
+        --radius: 16px;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 48px 24px 64px;
+      }
+
+      /* Header */
+      .header {
+        text-align: center;
+        margin-bottom: 36px;
+      }
+      .header h1 {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 8px;
+      }
+      .header p {
+        font-size: 15px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        max-width: 540px;
+        margin: 0 auto;
+      }
+      .header code {
+        background: #f1f5f9;
+        padding: 0.15em 0.4em;
+        border-radius: 5px;
+        font-size: 13px;
+        color: var(--accent);
+      }
+
+      /* Upload area */
+      .upload-section {
+        margin-bottom: 28px;
+      }
+      .upload-zone {
+        border: 2px dashed var(--border);
+        border-radius: var(--radius);
+        padding: 32px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+        background: var(--card-bg);
+        position: relative;
+      }
+      .upload-zone:hover,
+      .upload-zone.drag-over {
+        border-color: var(--accent-light);
+        background: #f8f7ff;
+      }
+      .upload-zone input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .upload-icon {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 12px;
+        color: var(--accent-light);
+      }
+      .upload-zone h3 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .upload-zone p {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      .upload-zone .btn-browse {
+        display: inline-block;
+        margin-top: 14px;
+        padding: 8px 24px;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+        pointer-events: none;
+      }
+      .upload-zone:hover .btn-browse {
+        background: #4f46e5;
+      }
+
+      /* Controls bar */
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+      }
+      .controls label {
+        font-size: 13px;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .controls input[type="range"] {
+        width: 120px;
+        accent-color: var(--accent);
+      }
+      .controls .value-display {
+        font-weight: 600;
+        color: var(--text);
+        min-width: 32px;
+        text-align: center;
+      }
+      .btn-reset {
+        margin-left: auto;
+        padding: 6px 16px;
+        font-size: 13px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--card-bg);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .btn-reset:hover {
+        border-color: var(--accent-light);
+        color: var(--accent);
+      }
+
+      /* Card */
+      .card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        background: var(--card-bg);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      }
+
+      /* Zoom container */
+      .zoom {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        background: #f0f0f0;
+      }
+      .zoom img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        user-select: none;
+        -webkit-user-drag: none;
+        pointer-events: none;
+      }
+      .zoom.is-hover { cursor: none; }
+
+      /* Zoom layer */
+      .zoom .layer {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        z-index: 10;
+        opacity: 0;
+        transform: scale(0.58);
+        transform-origin: var(--x) var(--y);
+        transition: opacity 300ms ease-out, transform 300ms ease-out;
+        will-change: opacity, transform;
+      }
+      .zoom.is-hover .layer {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .zoom.is-leaving .layer {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+
+      /* Zoomed content */
+      .zoom .zoomed {
+        position: absolute;
+        inset: 0;
+        transform: scale(var(--zoom));
+        transform-origin: var(--x) var(--y);
+      }
+
+      /* Lens frame */
+      .zoom .lens {
+        position: absolute;
+        width: var(--lens-size);
+        height: var(--lens-size);
+        border-radius: 999px;
+        pointer-events: none;
+        z-index: 20;
+        border: 1.5px solid rgba(255,255,255,0.55);
+        box-shadow:
+          0 0 0 1px rgba(0,0,0,0.12),
+          inset 0 0 0 1px rgba(0,0,0,0.06);
+        opacity: 0;
+        transform: scale(0.58);
+        transition: opacity 300ms ease-out, transform 300ms ease-out;
+        will-change: opacity, transform;
+      }
+      .zoom.is-hover .lens {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .zoom.is-leaving .lens {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+
+      /* Footer */
+      .footer {
+        text-align: center;
+        margin-top: 24px;
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+      .footer a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .footer a:hover { text-decoration: underline; }
+
+      .hint {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--text-secondary);
+        text-align: center;
+      }
+
+      /* Responsive */
+      @media (max-width: 600px) {
+        .container { padding: 24px 16px 48px; }
+        .header h1 { font-size: 22px; }
+        .controls { gap: 10px; }
+        .controls input[type="range"] { width: 90px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header -->
+      <div class="header">
+        <h1>Zoom Lens Magnifier</h1>
+        <p>
+          上传任意图片，体验圆形放大镜效果。原理：同一张图渲染两层，上层
+          <code>scale()</code> 放大，再用 <code>mask-image: radial-gradient()</code> 挖出圆形窗口。
+        </p>
+      </div>
+
+      <!-- Upload -->
+      <div class="upload-section">
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" id="fileInput" accept="image/*" />
+          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <h3>拖放图片到此处</h3>
+          <p>支持 JPG、PNG、WebP、SVG 等常见图片格式</p>
+          <span class="btn-browse">选择图片</span>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls">
+        <label>
+          放大倍数
+          <input type="range" id="zoomRange" min="1.1" max="3" step="0.05" value="1.55" />
+          <span class="value-display" id="zoomValue">1.55x</span>
+        </label>
+        <label>
+          镜片大小
+          <input type="range" id="lensRange" min="100" max="350" step="10" value="200" />
+          <span class="value-display" id="lensValue">200px</span>
+        </label>
+        <button class="btn-reset" id="btnReset">恢复示例图片</button>
+      </div>
+
+      <!-- Zoom Card -->
+      <div class="card">
+        <div class="zoom" id="zoom">
+          <img id="baseImg"
+            src="https://www.kumailnanji.com/images/letters/letter-correction.png"
+            alt="Zoom lens demo"
+            draggable="false" />
+          <div class="layer" id="layer">
+            <div class="zoomed" id="zoomed">
+              <img id="zoomImg" src="" alt="" draggable="false" />
+            </div>
+          </div>
+          <div class="lens" id="lens" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div class="hint">Hover to zoom — 在图片上移动鼠标试试</div>
+
+      <div class="footer">
+        Built with pure HTML / CSS / JS &middot;
+        <a href="https://github.com" target="_blank" rel="noopener">View on GitHub</a>
+      </div>
+    </div>
+
+    <script>
+      // ── Elements ────────────────────────────────────────────────
+      const el       = document.getElementById("zoom");
+      const layer    = document.getElementById("layer");
+      const lens     = document.getElementById("lens");
+      const baseImg  = document.getElementById("baseImg");
+      const zoomImg  = document.getElementById("zoomImg");
+      const fileInput = document.getElementById("fileInput");
+      const uploadZone = document.getElementById("uploadZone");
+      const zoomRange  = document.getElementById("zoomRange");
+      const lensRange  = document.getElementById("lensRange");
+      const zoomValue  = document.getElementById("zoomValue");
+      const lensValue  = document.getElementById("lensValue");
+      const btnReset   = document.getElementById("btnReset");
+
+      const DEMO_SRC = "https://www.kumailnanji.com/images/letters/letter-correction.png";
+
+      // ── Sync src to zoom layer ──────────────────────────────────
+      function syncZoomSrc() {
+        const src = baseImg.currentSrc || baseImg.src;
+        if (zoomImg.src !== src) zoomImg.src = src;
+      }
+      baseImg.addEventListener("load", syncZoomSrc);
+      baseImg.addEventListener("error", syncZoomSrc);
+      syncZoomSrc();
+
+      // ── Read CSS vars ───────────────────────────────────────────
+      function getLensSize() {
+        return parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue("--lens-size")
+        );
+      }
+
+      // ── Position logic ──────────────────────────────────────────
+      function setPos(clientX, clientY) {
+        const r = el.getBoundingClientRect();
+        const x = clientX - r.left;
+        const y = clientY - r.top;
+        const half = getLensSize() / 2;
+
+        // mask: circular reveal
+        const mask = `radial-gradient(circle ${half}px at ${x}px ${y}px, black 100%, transparent 100%)`;
+        layer.style.webkitMaskImage = mask;
+        layer.style.maskImage = mask;
+
+        // transform-origin
+        el.style.setProperty("--x", `${x}px`);
+        el.style.setProperty("--y", `${y}px`);
+
+        // lens position
+        lens.style.left = `${x - half}px`;
+        lens.style.top  = `${y - half}px`;
+      }
+
+      // ── Hover states ────────────────────────────────────────────
+      let leaveTimer = null;
+
+      el.addEventListener("mouseenter", () => {
+        if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
+        el.classList.remove("is-leaving");
+        el.classList.add("is-hover");
+      });
+      el.addEventListener("mouseleave", () => {
+        el.classList.remove("is-hover");
+        el.classList.add("is-leaving");
+        leaveTimer = setTimeout(() => {
+          el.classList.remove("is-leaving");
+          leaveTimer = null;
+        }, 300);
+      });
+      el.addEventListener("mousemove", (e) => setPos(e.clientX, e.clientY));
+
+      // ── Touch support ───────────────────────────────────────────
+      el.addEventListener("touchstart", (e) => {
+        el.classList.add("is-hover");
+        el.classList.remove("is-leaving");
+        const t = e.touches[0];
+        if (t) setPos(t.clientX, t.clientY);
+      }, { passive: true });
+      el.addEventListener("touchmove", (e) => {
+        const t = e.touches[0];
+        if (t) setPos(t.clientX, t.clientY);
+      }, { passive: true });
+      el.addEventListener("touchend", () => {
+        el.classList.remove("is-hover");
+        el.classList.add("is-leaving");
+        setTimeout(() => el.classList.remove("is-leaving"), 300);
+      });
+
+      // ── Init position ───────────────────────────────────────────
+      requestAnimationFrame(() => {
+        const r0 = el.getBoundingClientRect();
+        setPos(r0.left + r0.width * 0.25, r0.top + r0.height * 0.25);
+      });
+
+      // ── File upload ─────────────────────────────────────────────
+      function loadImage(src) {
+        baseImg.src = src;
+        syncZoomSrc();
+      }
+
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => loadImage(ev.target.result);
+        reader.readAsDataURL(file);
+      });
+
+      // Drag & drop
+      uploadZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadZone.classList.add("drag-over");
+      });
+      uploadZone.addEventListener("dragleave", () => {
+        uploadZone.classList.remove("drag-over");
+      });
+      uploadZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove("drag-over");
+        const file = e.dataTransfer.files?.[0];
+        if (!file || !file.type.startsWith("image/")) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => loadImage(ev.target.result);
+        reader.readAsDataURL(file);
+      });
+
+      // ── Controls ────────────────────────────────────────────────
+      zoomRange.addEventListener("input", () => {
+        const v = parseFloat(zoomRange.value);
+        document.documentElement.style.setProperty("--zoom", v);
+        zoomValue.textContent = v.toFixed(2) + "x";
+      });
+      lensRange.addEventListener("input", () => {
+        const v = parseInt(lensRange.value, 10);
+        document.documentElement.style.setProperty("--lens-size", v + "px");
+        lensValue.textContent = v + "px";
+      });
+
+      btnReset.addEventListener("click", () => {
+        loadImage(DEMO_SRC);
+        fileInput.value = "";
+        zoomRange.value = 1.55;
+        lensRange.value = 200;
+        document.documentElement.style.setProperty("--zoom", 1.55);
+        document.documentElement.style.setProperty("--lens-size", "200px");
+        zoomValue.textContent = "1.55x";
+        lensValue.textContent = "200px";
+      });
+    </script>
+  </body>
+</html>
