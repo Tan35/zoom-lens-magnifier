@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zoom Lens Minimal Demo</title>
+    <style>
+      :root {
+        --lens-size: 200px;
+        --zoom: 1.55;
+      }
+
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+        background: #fcfcfc;
+        color: #111;
+      }
+
+      .wrap {
+        max-width: 760px;
+        margin: 40px auto;
+        padding: 0 20px;
+      }
+
+      .card {
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      }
+
+      .zoom {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        background: #f5f5f5;
+      }
+
+      .zoom img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        user-select: none;
+        -webkit-user-drag: none;
+        pointer-events: none; /* 让事件落到容器上 */
+      }
+
+      .zoom.is-hover {
+        cursor: none; /* 对齐原站：hover 时隐藏鼠标 */
+      }
+
+      /* 放大层（覆盖在原图之上）——对齐原站：enter scale .58 / exit scale .8 */
+      .zoom .layer {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        z-index: 10;
+
+        opacity: 0;
+        transform: scale(0.58);
+        transform-origin: var(--x) var(--y);
+        transition:
+          opacity 300ms ease-out,
+          transform 300ms ease-out;
+        will-change: opacity, transform;
+      }
+
+      .zoom.is-hover .layer {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      .zoom.is-leaving .layer {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+
+      /* 被放大的内容容器 */
+      .zoom .zoomed {
+        position: absolute;
+        inset: 0;
+        transform: scale(var(--zoom));
+        transform-origin: var(--x) var(--y);
+      }
+
+      /* 镜框（柔和细描边方案） */
+      .zoom .lens {
+        position: absolute;
+        width: var(--lens-size);
+        height: var(--lens-size);
+        border-radius: 999px;
+        pointer-events: none;
+        z-index: 20;
+
+        border: 1.5px solid rgba(255, 255, 255, 0.55);
+        box-shadow:
+          0 0 0 1px rgba(0, 0, 0, 0.12),
+          inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+
+        opacity: 0;
+        transform: scale(0.58);
+        transition:
+          opacity 300ms ease-out,
+          transform 300ms ease-out;
+        will-change: opacity, transform;
+      }
+
+      .zoom.is-hover .lens {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      .zoom.is-leaving .lens {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+
+      .hint {
+        margin-top: 10px;
+        font-size: 12px;
+        color: #666;
+        text-align: center;
+      }
+
+      code {
+        background: #f1f1f1;
+        padding: 0.1em 0.35em;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1 style="margin: 0 0 12px; font-size: 18px">圆形放大镜（mask-image 方案）最小 DEMO</h1>
+      <p style="margin: 0 0 18px; font-size: 13px; color: #555">
+        原理：同一张图渲染两层，上层 <code>scale()</code> 放大，再用 <code>mask-image: radial-gradient(...)</code> 挖圆形窗口。
+      </p>
+
+      <div class="card">
+        <div class="zoom" id="zoom">
+          <!-- 只改这里的 src 就行（JS 会同步到放大层） -->
+          <img
+            id="baseImg"
+            src="https://www.kumailnanji.com/images/letters/letter-correction.png"
+            alt="Hershey vs polished Bezier"
+            draggable="false"
+          />
+
+          <!-- 放大层：里面再放一次同样的 img -->
+          <div class="layer" id="layer">
+            <div class="zoomed" id="zoomed">
+              <img id="zoomImg" src="" alt="" draggable="false" />
+            </div>
+          </div>
+
+          <div class="lens" id="lens" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div class="hint">Hover to zoom（桌面端移动鼠标试试）</div>
+    </div>
+
+    <script>
+      const el = document.getElementById("zoom");
+      const layer = document.getElementById("layer");
+      const lens = document.getElementById("lens");
+      const baseImg = document.getElementById("baseImg");
+      const zoomImg = document.getElementById("zoomImg");
+
+      // 同步底层图片到放大层：只需要改 baseImg.src
+      function syncZoomSrc() {
+        const src = baseImg.currentSrc || baseImg.src;
+        if (zoomImg.src !== src) zoomImg.src = src;
+      }
+      baseImg.addEventListener("load", syncZoomSrc);
+      baseImg.addEventListener("error", syncZoomSrc);
+      syncZoomSrc();
+
+      const lensSize = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--lens-size")
+      );
+
+
+      function setPos(clientX, clientY) {
+        const r = el.getBoundingClientRect();
+        let x = clientX - r.left;
+        let y = clientY - r.top;
+
+        // 对齐原站：这里 **不要 clamp**。
+        // 允许镜片中心跑到容器外（会被 overflow 裁掉），
+        // 这样才能放大到边缘内容（比如左上角的 a）。
+        const half = lensSize / 2;
+
+        // 1) mask：只露出圆形
+        const radius = half;
+        const mask = `radial-gradient(circle ${radius}px at ${x}px ${y}px, black 100%, transparent 100%)`;
+        layer.style.webkitMaskImage = mask;
+        layer.style.maskImage = mask;
+
+        // 2) transform-origin：以鼠标点为中心放大
+        el.style.setProperty("--x", `${x}px`);
+        el.style.setProperty("--y", `${y}px`);
+
+        // 3) 镜框位置
+        lens.style.left = `${x - half}px`;
+        lens.style.top = `${y - half}px`;
+
+      }
+
+      let leaveTimer = null;
+
+      el.addEventListener("mouseenter", () => {
+        if (leaveTimer) {
+          clearTimeout(leaveTimer);
+          leaveTimer = null;
+        }
+        el.classList.remove("is-leaving");
+        el.classList.add("is-hover");
+      });
+
+      el.addEventListener("mouseleave", () => {
+        el.classList.remove("is-hover");
+        el.classList.add("is-leaving");
+        leaveTimer = setTimeout(() => {
+          el.classList.remove("is-leaving");
+          leaveTimer = null;
+        }, 300);
+      });
+
+      el.addEventListener("mousemove", (e) => setPos(e.clientX, e.clientY));
+
+      // 触摸设备：按住拖动（最小支持）
+      el.addEventListener("touchstart", (e) => {
+        el.classList.add("is-hover");
+        el.classList.remove("is-leaving");
+        const t = e.touches[0];
+        if (t) setPos(t.clientX, t.clientY);
+      }, { passive: true });
+      el.addEventListener("touchmove", (e) => {
+        const t = e.touches[0];
+        if (t) setPos(t.clientX, t.clientY);
+      }, { passive: true });
+      el.addEventListener("touchend", () => {
+        el.classList.remove("is-hover");
+        el.classList.add("is-leaving");
+        setTimeout(() => el.classList.remove("is-leaving"), 300);
+      });
+
+      // 初始化一个位置
+      const r0 = el.getBoundingClientRect();
+      setPos(r0.left + r0.width * 0.25, r0.top + r0.height * 0.25);
+
+    </script>
+  </body>
+</html>
